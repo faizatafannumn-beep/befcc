@@ -76,28 +76,38 @@ class BefccViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun register(
-        fullName: String,
-        username: String,
-        email: String,
-        inGameUsername: String,
-        favoriteTeam: String,
-        onSuccess: () -> Unit
-    ) {
-        viewModelScope.launch {
-            _isSubmitting.value = true
-            val result = repository.registerUser(
-                fullName, username, email, inGameUsername, favoriteTeam
-            )
-            _isSubmitting.value = false
-            result.onSuccess {
-                _uiMessage.value = "Account created! Player ID: ${it.playerId}"
-                onSuccess()
-            }.onFailure {
-                _uiMessage.value = it.message ?: "Registration failed"
-            }
+    fullName: String,
+    username: String,
+    email: String,
+    inGameUsername: String,
+    favoriteTeam: String,
+    divisionRank: String = "Division 2",
+    onSuccess: () -> Unit
+) {
+    viewModelScope.launch {
+        _isSubmitting.value = true
+
+        val result = repository.registerUser(
+            fullName = fullName,
+            username = username,
+            email = email,
+            inGameUsername = inGameUsername,
+            favoriteTeam = favoriteTeam,
+            divisionRank = divisionRank
+        )
+
+        _isSubmitting.value = false
+
+        result.onSuccess {
+            _uiMessage.value =
+                "Account created! Player ID: ${it.playerId}"
+            onSuccess()
+        }.onFailure {
+            _uiMessage.value =
+                it.message ?: "Registration failed"
         }
     }
-
+}
     fun continueWithGoogle(name: String, email: String, onSuccess: () -> Unit) {
         viewModelScope.launch {
             _isSubmitting.value = true

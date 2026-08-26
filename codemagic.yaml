@@ -4,16 +4,21 @@ workflows:
     max_build_duration: 60
 
     scripts:
-      - name: Make Gradle wrapper executable
+      - name: Generate Gradle Wrapper
         script: |
-          chmod +x ./gradlew
+          gradle wrapper --gradle-version 9.3.1
+
+      - name: Set Android SDK location
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
 
       - name: Build BEFCC Debug APK
         script: |
+          chmod +x ./gradlew
           ./gradlew clean assembleDebug --no-daemon
 
     artifacts:
-      - app/build/outputs/apk/debug/*.apk
+      - app/build/outputs/**/*.apk
 
     publishing:
       email:

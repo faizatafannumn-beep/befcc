@@ -25,8 +25,7 @@ class BefccRepository(
     private val systemSettingDao = database.systemSettingDao()
 
     // Current Session State
-    private val _currentUser = MutableStateFlow<UserEntity?>(null)
-    val currentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
+    private val _currentUser = MutableStateFlow<UserEntity?>(nulAuthenticarrentUser: StateFlow<UserEntity?> = _currentUser.asStateFlow()
 
     private val _isInitialized = MutableStateFlow(false)
     val isInitialized: StateFlow<Boolean> = _isInitialized.asStateFlow()
@@ -52,29 +51,63 @@ class BefccRepository(
     }
 
     // --- Authentication ---
-    suspend fun login(emailOrUsername: String, pass: String): Result<UserEntity> = withContext(Dispatchers.IO) {
-        val query = emailOrUsername.trim()
-        var user = if (query.contains("@")) {
-            userDao.getUserByEmail(query.lowercase())
-        } else {
-            userDao.getUserByUsername(query) ?: if (query.equals("maruf", ignoreCase = true)) {
-                userDao.getUserByUsername("maruf_leader")
-            } else null
-        }
 
-        if (user == null && (query.equals("maruf", ignoreCase = true) || query.equals("maruf_leader", ignoreCase = true) || query.equals("maruf@befcc.org", ignoreCase = true))) {
-            seedDatabaseIfEmpty()
-            user = userDao.getUserByIdOnce(InitialData.leaderUser.id) ?: InitialData.leaderUser
-        }
+suspend fun login(
+    emailOrUsername: String,
+    pass: String
+): Result<UserEntity> = withContext(Dispatchers.IO) {
 
-        if (user != null) {
-            _currentUser.value = user
-            Result.success(user)
-        } else {
-            Result.failure(Exception("Account not found with given credentials ($query)."))
-        }
+    val query = emailOrUsername.trim()
+
+    var user: UserEntity? = if (query.contains("@")) {
+        userDao.getUserByEmail(query.lowercase())
+    } else {
+        userDao.getUserByUsername(query)
     }
 
+    // Fixed Super Admin login
+    if (
+        user == null &&
+        (
+            query.equals("maruf", ignoreCase = true) ||
+            query.equals("maruf_leader", ignoreCase = true) ||
+            query.equals("maruf@befcc.org", ignoreCase = true)
+        )
+    ) {
+        seedDatabaseIfEmpty()
+
+        user = userDao.getUserByIdOnce(
+            InitialData.leaderUser.id
+        ) ?: InitialData.leaderUser
+    }
+
+    if (user == null) {
+        return@withContext Result.failure(
+            Exception("Account not found.")
+        )
+    }
+
+    // Admin users
+    if (
+        user.role == UserRole.SUPER_ADMIN ||
+        user.role == UserRole.ADMIN
+    ) {
+        _currentUser.value = user
+
+        return@withContext Result.success(user)
+    }
+
+    // Normal Player
+    if (user.role == UserRole.PLAYER) {
+        _currentUser.value = user
+
+        return@withContext Result.success(user)
+    }
+
+    Result.failure(
+        Exception("Unauthorized account.")
+    )
+}
     suspend fun registerUser(
         fullName: String,
         username: String,

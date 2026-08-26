@@ -1,10 +1,11 @@
 package com.example.data.repository
 
 import com.example.data.model.*
-import java.util.UUID
 
 object InitialData {
+
     // Official Leader & Super Admin
+    // This is the only fixed admin account.
     val leaderUser = UserEntity(
         id = "admin_maruf_01",
         email = "maruf@befcc.org",
@@ -27,83 +28,27 @@ object InitialData {
         selectedTeams = "Bangladesh"
     )
 
-    // Official Admins
-    val adminJabir = UserEntity(
-        id = "admin_jabir_02",
-        email = "jabir@befcc.org",
-        fullName = "Jabir",
-        username = "jabir_admin",
-        playerId = "BEFCC-00002",
-        role = UserRole.ADMIN,
-        avatarName = "avatar_admin_2",
-        inGameUsername = "BEFCC_JABIR",
-        favoriteTeam = "Bangladesh",
-        divisionRank = "Tournament Admin",
-        matchesPlayed = 0,
-        wins = 0,
-        draws = 0,
-        losses = 0,
-        goalsScored = 0,
-        goalsConceded = 0,
-        points = 0,
-        achievements = "BEFCC Tournament Admin",
-        selectedTeams = "Bangladesh"
-    )
+    // No fixed Admin accounts.
+    // Any registered Player can later be promoted to ADMIN
+    // through the authorized admin-management system.
+    val adminTeam = listOf(leaderUser)
 
-    val adminMahi = UserEntity(
-        id = "admin_mahi_03",
-        email = "mahi@befcc.org",
-        fullName = "Mahi",
-        username = "mahi_admin",
-        playerId = "BEFCC-00003",
-        role = UserRole.ADMIN,
-        avatarName = "avatar_admin_3",
-        inGameUsername = "BEFCC_MAHI",
-        favoriteTeam = "Bangladesh",
-        divisionRank = "Tournament Admin",
-        matchesPlayed = 0,
-        wins = 0,
-        draws = 0,
-        losses = 0,
-        goalsScored = 0,
-        goalsConceded = 0,
-        points = 0,
-        achievements = "BEFCC Tournament Admin",
-        selectedTeams = "Bangladesh"
-    )
-
-    val adminJon = UserEntity(
-        id = "admin_jon_04",
-        email = "jon@befcc.org",
-        fullName = "Jon",
-        username = "jon_admin",
-        playerId = "BEFCC-00004",
-        role = UserRole.ADMIN,
-        avatarName = "avatar_admin_4",
-        inGameUsername = "BEFCC_JON",
-        favoriteTeam = "Bangladesh",
-        divisionRank = "Tournament Admin",
-        matchesPlayed = 0,
-        wins = 0,
-        draws = 0,
-        losses = 0,
-        goalsScored = 0,
-        goalsConceded = 0,
-        points = 0,
-        achievements = "BEFCC Tournament Admin",
-        selectedTeams = "Bangladesh"
-    )
-
-    // Initial system accounts (Leader & Admins)
-    val adminTeam = listOf(leaderUser, adminJabir, adminMahi, adminJon)
-
-    // Real production state: NO demo players, NO demo tournaments, NO demo matches, NO demo standings
+    // No demo players
     val emptyPlayers: List<UserEntity> = emptyList()
+
+    // No demo tournaments
     val emptyTournaments: List<TournamentEntity> = emptyList()
+
+    // No demo slots
     val emptySlots: List<SlotEntity> = emptyList()
+
+    // No demo standings
     val emptyStandings: List<StandingEntity> = emptyList()
+
+    // No demo matches
     val emptyMatches: List<MatchEntity> = emptyList()
 
+    // Initial system notification
     val initialNotifications = listOf(
         NotificationEntity(
             id = "notif_system_welcome",

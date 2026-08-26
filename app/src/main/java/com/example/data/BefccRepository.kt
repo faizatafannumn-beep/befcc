@@ -112,15 +112,44 @@ suspend fun login(
     fullName: String,
     username: String,
     email: String,
-    password: String,
     inGameUsername: String,
     favoriteTeam: String,
     divisionRank: String = "Division 2"
 ): Result<UserEntity> = withContext(Dispatchers.IO) {
 
-    val existingEmail = userDao.getUserByEmail(
-        email.trim().lowercase()
-    )
+    val cleanName = fullName.trim()
+    val cleanUsername = username.trim()
+    val cleanEmail = email.trim().lowercase()
+    val cleanGameUsername = inGameUsername.trim()
+    val cleanFavoriteTeam = favoriteTeam.trim().ifBlank { "Bangladesh" }
+
+    // Basic validation
+    if (cleanName.isBlank()) {
+        return@withContext Result.failure(
+            Exception("Player name is required.")
+        )
+    }
+
+    if (cleanUsername.isBlank()) {
+        return@withContext Result.failure(
+            Exception("Username is required.")
+        )
+    }
+
+    if (cleanEmail.isBlank()) {
+        return@withContext Result.failure(
+            Exception("Email is required.")
+        )
+    }
+
+    if (cleanGameUsername.isBlank()) {
+        return@withContext Result.failure(
+            Exception("In-game username is required.")
+        )
+    }
+
+    // Email must be unique
+    val existingEmail = userDao.getUserByEmail(cleanEmail)
 
     if (existingEmail != null) {
         return@withContext Result.failure(
@@ -128,57 +157,70 @@ suspend fun login(
         )
     }
 
-    val existingUsername = userDao.getUserByUsername(
-        username.trim()
-    )
+    // Username must be unique
+    val existingUsername = userDao.getUserByUsername(cleanUsername)
 
     if (existingUsername != null) {
         return@withContext Result.failure(
             Exception("Username is already taken.")
         )
     }
-}
 
+    // Generate unique BEFCC Player ID
+    var newPlayerId: String
+    var existingPlayer: UserEntity?
+
+    do {
         val randomSuffix = (10000..99999).random()
-        val newPlayerId = "BEFCC-$randomSuffix"
-        val newUser = UserEntity(
-            id = "user_${UUID.randomUUID().toString().take(8)}",
-            email = email.trim().lowercase(),
-            fullName = fullName.trim(),
-            username = username.trim(),
-            playerId = newPlayerId,
-            role = UserRole.PLAYER,
-            avatarName = "avatar_${(1..8).random()}",
-            inGameUsername = inGameUsername.trim(),
-            favoriteTeam = favoriteTeam.trim(),
-            divisionRank = divisionRank,
-            matchesPlayed = 0,
-            wins = 0,
-            draws = 0,
-            losses = 0,
-            goalsScored = 0,
-            goalsConceded = 0,
-            points = 0,
-            achievements = "BEFCC Verified Player",
-            selectedTeams = favoriteTeam.trim().ifBlank { "Bangladesh" },
-            createdAt = System.currentTimeMillis()
+        newPlayerId = "BEFCC-$randomSuffix"
+        existingPlayer = userDao.getUserByIdOnce(newPlayerId)
+    } while (existingPlayer != null)
+
+    // Create every new account as NORMAL PLAYER.
+    // Nobody becomes Admin automatically.
+    val newUser = UserEntity(
+        id = "user_${UUID.randomUUID().toString().take(8)}",
+        email = cleanEmail,
+        fullName = cleanName,
+        username = cleanUsername,
+        playerId = newPlayerId,
+        role = UserRole.PLAYER,
+        avatarName = "avatar_${(1..8).random()}",
+        inGameUsername = cleanGameUsername,
+        favoriteTeam = cleanFavoriteTeam,
+        divisionRank = divisionRank,
+        matchesPlayed = 0,
+        wins = 0,
+        draws = 0,
+        losses = 0,
+        goalsScored = 0,
+        goalsConceded = 0,
+        points = 0,
+        achievements = "BEFCC Verified Player",
+        selectedTeams = cleanFavoriteTeam,
+        createdAt = System.currentTimeMillis()
+    )
+
+    // Save user
+    userDao.insertUser(newUser)
+
+    // Set newly registered player as current user
+    _currentUser.value = newUser
+
+    // Welcome notification
+    notificationDao.insertNotification(
+        NotificationEntity(
+            id = UUID.randomUUID().toString(),
+            userId = newUser.id,
+            title = "Welcome to BEFCC, ${newUser.fullName}!",
+            message = "Your player registration is complete. Your official Player ID is ${newUser.playerId}.",
+            type = NotificationType.ACCOUNT_CREATED,
+            timestamp = System.currentTimeMillis()
         )
+    )
 
-        userDao.insertUser(newUser)
-        _currentUser.value = newUser
-
-        notificationDao.insertNotification(
-            NotificationEntity(
-                id = UUID.randomUUID().toString(),
-                userId = newUser.id,
-                title = "Welcome to BEFCC, ${newUser.fullName}!",
-                message = "Your player registration is complete. Your official Player ID is ${newUser.playerId}.",
-                type = NotificationType.ACCOUNT_CREATED
-            )
-        )
-
-        Result.success(newUser)
-    }
+    Result.success(newUser)
+}
 
     suspend fun continueWithGoogle(
         googleName: String,

@@ -109,21 +109,35 @@ suspend fun login(
     )
 }
     suspend fun registerUser(
-        fullName: String,
-        username: String,
-        email: String,
-        inGameUsername: String,
-        favoriteTeam: String,
-        divisionRank: String = "Division 2"
-    ): Result<UserEntity> = withContext(Dispatchers.IO) {
-        val existingEmail = userDao.getUserByEmail(email.trim().lowercase())
-        if (existingEmail != null) {
-            return@withContext Result.failure(Exception("An account with this email already exists."))
-        }
-        val existingUsername = userDao.getUserByUsername(username.trim())
-        if (existingUsername != null) {
-            return@withContext Result.failure(Exception("Username is already taken."))
-        }
+    fullName: String,
+    username: String,
+    email: String,
+    password: String,
+    inGameUsername: String,
+    favoriteTeam: String,
+    divisionRank: String = "Division 2"
+): Result<UserEntity> = withContext(Dispatchers.IO) {
+
+    val existingEmail = userDao.getUserByEmail(
+        email.trim().lowercase()
+    )
+
+    if (existingEmail != null) {
+        return@withContext Result.failure(
+            Exception("An account with this email already exists.")
+        )
+    }
+
+    val existingUsername = userDao.getUserByUsername(
+        username.trim()
+    )
+
+    if (existingUsername != null) {
+        return@withContext Result.failure(
+            Exception("Username is already taken.")
+        )
+    }
+}
 
         val randomSuffix = (10000..99999).random()
         val newPlayerId = "BEFCC-$randomSuffix"

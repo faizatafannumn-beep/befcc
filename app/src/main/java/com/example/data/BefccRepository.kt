@@ -223,55 +223,95 @@ suspend fun login(
 }
 
     suspend fun continueWithGoogle(
-        googleName: String,
-        googleEmail: String
-    ): Result<UserEntity> = withContext(Dispatchers.IO) {
-        val existing = userDao.getUserByEmail(googleEmail.trim().lowercase())
-        if (existing != null) {
-            _currentUser.value = existing
-            return@withContext Result.success(existing)
-        }
+    googleName: String,
+    googleEmail: String
+): Result<UserEntity> = withContext(Dispatchers.IO) {
 
-        val baseUsername = googleEmail.substringBefore("@").replace(".", "_")
-        val randomSuffix = (10000..99999).random()
-        val newPlayerId = "BEFCC-$randomSuffix"
-        val newUser = UserEntity(
-            id = "user_g_${UUID.randomUUID().toString().take(8)}",
-            email = googleEmail.trim().lowercase(),
-            fullName = googleName.ifBlank { "eFootball Player" },
-            username = baseUsername,
-            playerId = newPlayerId,
-            role = UserRole.PLAYER,
-            avatarName = "avatar_1",
-            inGameUsername = baseUsername,
-            favoriteTeam = "Bangladesh",
-            divisionRank = "Division 2",
-            matchesPlayed = 0,
-            wins = 0,
-            draws = 0,
-            losses = 0,
-            goalsScored = 0,
-            goalsConceded = 0,
-            points = 0,
-            achievements = "BEFCC Verified Player",
-            selectedTeams = "Bangladesh",
-            createdAt = System.currentTimeMillis()
+    val cleanEmail = googleEmail.trim().lowercase()
+
+    if (cleanEmail.isBlank()) {
+        return@withContext Result.failure(
+            Exception("Google account email is required.")
         )
-        userDao.insertUser(newUser)
-        _currentUser.value = newUser
-
-        notificationDao.insertNotification(
-            NotificationEntity(
-                id = UUID.randomUUID().toString(),
-                userId = newUser.id,
-                title = "Google Sign-In Successful",
-                message = "Welcome to BEFCC! Your official Player ID is ${newUser.playerId}.",
-                type = NotificationType.ACCOUNT_CREATED
-            )
-        )
-
-        Result.success(newUser)
     }
+
+    // If account already exists, use the existing account.
+    val existing = userDao.getUserByEmail(cleanEmail)
+
+    if (existing != null) {
+        _currentUser.value = existing
+        return@withContext Result.success(existing)
+    }
+
+    // Generate a unique username.
+    val baseUsername = cleanEmail
+        .substringBefore("@")
+        .replace(".", "_")
+        .replace("-", "_")
+
+    var username = baseUsername
+    var counter = 1
+
+    while (userDao.getUserByUsername(username) != null) {
+        username = "${baseUsername}_$counter"
+        counter++
+    }
+
+    // Generate a unique BEFCC Player ID.
+    var newPlayerId: String
+    var existingPlayer: UserEntity?
+
+    do {
+        val randomSuffix = (10000..99999).random()
+        newPlayerId = "BEFCC-$randomSuffix"
+        existingPlayer = userDao.getUserByIdOnce(newPlayerId)
+    } while (existingPlayer != null)
+
+    // IMPORTANT:
+    // Every NEW Google account is always a normal PLAYER.
+    // Nobody becomes Admin automatically.
+    val newUser = UserEntity(
+        id = "user_g_${UUID.randomUUID().toString().take(8)}",
+        email = cleanEmail,
+        fullName = googleName.trim().ifBlank {
+            "eFootball Player"
+        },
+        username = username,
+        playerId = newPlayerId,
+        role = UserRole.PLAYER,
+        avatarName = "avatar_1",
+        inGameUsername = username,
+        favoriteTeam = "Bangladesh",
+        divisionRank = "Division 2",
+        matchesPlayed = 0,
+        wins = 0,
+        draws = 0,
+        losses = 0,
+        goalsScored = 0,
+        goalsConceded = 0,
+        points = 0,
+        achievements = "BEFCC Verified Player",
+        selectedTeams = "Bangladesh",
+        createdAt = System.currentTimeMillis()
+    )
+
+    userDao.insertUser(newUser)
+
+    _currentUser.value = newUser
+
+    notificationDao.insertNotification(
+        NotificationEntity(
+            id = UUID.randomUUID().toString(),
+            userId = newUser.id,
+            title = "Google Sign-In Successful",
+            message = "Welcome to BEFCC! Your official Player ID is ${newUser.playerId}.",
+            type = NotificationType.ACCOUNT_CREATED,
+            timestamp = System.currentTimeMillis()
+        )
+    )
+
+    Result.success(newUser)
+}
 
     fun logout() {
         _currentUser.value = null
